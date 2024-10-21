@@ -1,0 +1,25 @@
+apiVersion: vmoperator.vmware.com/v1alpha1
+kind: VirtualMachine
+metadata:
+  name: ubuntu-vm
+  namespace: vsphere-namespace-01
+spec:
+  imageName: ubuntu-21.10-server-cloudimg-amd64
+  className: best-effort-large
+  powerState: poweredOn
+  networkInterfaces:
+  - networkName: pg-sa-tanzu-workload
+    networkType: vsphere-distributed
+  storageClass: sp-tanzu
+  vmMetadata:
+    configMapName: ubuntu-data
+    transport: CloudInit
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: ubuntu-data
+    namespace: vsphere-namespace-01
+data:
+  user-data: >-
+     I2Nsb3VkLWNvbmZpZwoKcGFzc3dvcmQ6IFZNV0FSRQpzc2hfcHdhdXRoOiB0cnVlCgp1c2VyczoKICAtIG5hbWU6IHZtd2FyZQogICAgc3VkbzogQUxMPShBTEwpIE5PUEFTU1dEOkFMTAogICAgbG9ja19wYXNzd2Q6IGZhbHNlCiAgICAjIFBhc3N3b3JkIHNldCB0byBWTXdhcmUxIQogICAgcGFzc3dkOiAnJDEkc2FsdCRSVVhtMUxjbzVqY0o3T0J3LmhSUWkxJwogICAgc2hlbGw6IC9iaW4vYmFzaAoKd3JpdGVfZmlsZXM6CiAgLSBjb250ZW50OiB8CiAgICAgIFZNU1ZDIFNheXMgSGVsbG8gV29ybGQKICAgIHBhdGg6IC9oZWxsb3dvcmxkCg==
