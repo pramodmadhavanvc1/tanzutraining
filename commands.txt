@@ -1,0 +1,146 @@
+
+Lab commands:
+=============
+
+#Lab 6: Downloading and Installing Kubernetes CLI tools for vSphere
+
+## Task 3:  Install Kubernetes CLI Tools for vSphere
+cd ~/workspace
+unzip vsphere-plugin.zip
+sudo install -v ~/workspace/bin/* /usr/local/bin/
+kubectl version --client=true --short
+kubectl vsphere version
+
+## Task 4: 
+echo 'source <(kubectl completion bash)' >> ~/.bash_profile
+source ~/.bash_profile
+
+
+#Lab 7: Log In to the Supervisor
+
+## Task 2:  Log In to the Supervisor with the Kubernetes CLI
+kubectl vsphere login --server=https://<SUPERVISOR_IP>
+kubectl config get-contexts
+kubectl config use-context <SUPERVISOR_IP>
+
+
+#Lab 8: Installing the Contour, ExternalDNS, and Harbor Supervisor Services
+
+## Task 5:  Access and Prepare Harbor
+sudo mkdir /etc/docker/certs.d/harbor.vmbeans.com
+sudo cp ~/workspace/ca.crt /etc/docker/certs.d/harbor.vmbeans.com
+docker login harbor.vmbeans.com
+
+
+#Lab 9: Deploying a Tanzu Kubernetes Grid Workload Cluster
+
+## Task 2:  Log In to the Supervisor with the Tanzu CLI
+kubectl vsphere login --server=https://<SUPERVISOR_IP>
+kubectl config get-contexts
+kubectl config use-context <SUPERVISOR_IP>
+tanzu login
+/home/student01/.kube/config
+tanzu config server list
+
+## Task 4:  Create a Tanzu Kubernetes Grid Workload Cluster
+cd ~/workspace/clusterconfigs
+cat tkc-01.yaml
+tanzu cluster create -f tkc-01.yaml 
+tanzu cluster list
+tanzu cluster machinehealthcheck control-plane get tkc-01
+tanzu cluster machinehealthcheck node get tkc-01
+
+
+#Lab 10: Upload an Image to Harbor and Deploy a Container Application Using It
+
+## Task 2: Task 2:  Push an Image to Harbor
+docker tag projects.registry.vmware.com/vclass/vmbeans-website harbor.vmbeans.com/my_project/vmbeans-website
+docker images
+docker push harbor.vmbeans.com/my_project/vmbeans-website
+
+## Task 3: Test the Harbor Repository
+tanzu cluster kubeconfig get tkc-01 --namespace=vsphere-namespace-01 --admin
+kubectl config get-contexts
+kubectl config use-context tkc-01-admin@tkc-01
+cd ~/workspace
+kubectl apply -f allow-runasroot-clusterrole.yml
+cat vmbeans.yaml
+kubectl apply -f ~/workspace/vmbeans.yaml
+kubectl get pods
+kubectl get service vmbeans-service
+
+
+#Lab 11: Deploying a VM with the VM Service
+
+## Task 4:  Add the Content Library to the vSphere Namespace
+kubectl config use-context <SUPERVISOR_IP>
+kubectl get virtualmachineimage ubuntu-21.10-server-cloudimg-amd64 -n vsphere-namespace-01 
+
+## Task 5:  Deploy a VM
+cat ~/workspace/ubuntu-vm.yaml
+kubectl apply -f ~/workspace/ubuntu-vm.yaml
+kubectl get virtualmachine ubuntu-vm -n vsphere-namespace-01 -o wide
+ssh vmware@
+
+# Lab 12: Backup and Restore using Velero Plugin for vSphere
+
+## Task 3:  Create a Backup Credential
+cd ~/workspace
+code credentials-minio
+checkconfig credentials-minio
+
+## Task 4:  Install Velero
+kubectl vsphere login --vsphere-username administrator@vsphere.local --server=https://<SUPERVISOR_IP>
+tanzu login
+kubectl config use-context tkc-01-admin@tkc-01
+cd ~/workspace
+gzip -d velero-v1.11.1-linux-amd64.tar.gz
+tar -xvf velero-v1.11.1-linux-amd64.tar
+sudo install velero-v1.11.1-linux-amd64/velero /usr/local/bin/velero
+velero version --client-only
+kubectl apply -f velero-vsphere-plugin-config.yaml
+velero install \
+--provider aws \
+--bucket velero \
+--secret-file ~/workspace/credentials-minio \
+--features=EnableVSphereItemActionPlugin \
+--plugins velero/velero-plugin-for-aws:v1.4.0 \
+--snapshot-location-config region=local-backup \
+--backup-location-config region=local-backup,s3ForcePathStyle="true",s3Url=http://172.20.11.201:9000
+velero plugin add vsphereveleroplugin/velero-plugin-for-vsphere:1.5.1
+kubectl get all -n velero
+
+## Task 5:  Create a Backup
+velero backup create vmbeans-backup --include-namespaces=default
+velero backup describe vmbeans-backup
+
+## Task 6:  Simulate an Incident
+kubectl get all
+~/workspace/disaster.sh
+kubectl get all
+
+## Task 7:  Restore from Backup
+velero restore create --from-backup vmbeans-backup
+kubectl get all
+
+
+# Lab 13: Performing Basic Troubleshooting
+
+## Task 2:  Use SSH to Connect to a Supervisor Control Plane Node
+ssh root@sa-vcsa-01.vmbeans.com 
+/usr/lib/vmware-wcp/decryptK8Pwd.py
+ssh root@172.20.11.100
+dig sa-vcsa-01.vmbeans.com +short
+dig google.com +short
+
+## Task 3:  Troubleshoot a failed VM Service Deployment
+kubectl vsphere login --server=https://<SUPERVISOR_IP>
+kubectl config use-context <SUPERVISOR_IP>
+cd ~/workspace
+kubectl apply -f ubuntu-vm-02.yaml
+kubectl describe virtualmachine -n vsphere-namespace-01 ubuntu-vm-02
+kubectl get virtualmachineclass -n vsphere-namespace-01
+code ubuntu-vm-02.yaml
+kubectl delete -f ubuntu-vm-02.yaml
+kubectl apply -f ubuntu-vm-02.yaml
+kubectl describe virtualmachine -n vsphere-namespace-01 ubuntu-vm-02
